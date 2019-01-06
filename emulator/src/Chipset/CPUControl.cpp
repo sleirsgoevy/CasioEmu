@@ -4,6 +4,13 @@
 #include "Chipset.hpp"
 #include "MMU.hpp"
 
+#include <vector>
+#include <string>
+#include <sstream>
+#include <iomanip>
+#include <fstream>
+#include <cstdlib>
+
 namespace casioemu
 {
 	// * Control Register Access Instructions
@@ -163,6 +170,60 @@ namespace casioemu
 		emulator.chipset.Break();
 	}
 
+	// log-var-call stuff
+	std::vector<char> iscode;
+
+	void parse_disas()
+	{
+		std::ifstream disas ("fx_570es+_disas.txt");
+		std::string line, token;
+		iscode.clear();
+		while (std::getline(disas, line))
+		{
+			if (line.empty() || line[0] == ';' || line.back() == ':') continue;
+			std::stringstream line_ (line);
+			bool line_iscode = true;
+			while (true)
+			{
+				if (!(line_ >> token))
+				{
+					logger::Info("Invalid line? %s\n", line);
+					break;
+				}
+
+				if (token == "dw")
+					line_iscode = false;
+				else if (token == ";")
+				{
+					size_t offset;
+					line_ >> std::hex >> offset;
+					while (offset >= iscode.size())
+						iscode.push_back(false);
+					iscode[offset] = line_iscode;
+					break;
+				}
+			}
+		}
+	}
+
+	void check_dynamic_jump(uint16_t csr, uint16_t pc)
+	{
+		if (iscode.empty())
+			parse_disas();
+
+		size_t offset = ((size_t)csr) << 16 | pc;
+		if (!iscode.at(offset))
+		{
+			logger::Info("New entry address: %06zX\n", offset);
+			std::ofstream entry_addresses ("entry_addresses.txt", std::ios::app);
+			entry_addresses << std::hex << std::setfill('0') << std::setw(5)
+				<< offset << '\n';
+			entry_addresses.close();
+			std::system("./disassemble.sh");
+			parse_disas();
+		}
+	}
+
 	// * Branch Instructions
 	void CPU::OP_B()
 	{
@@ -172,7 +233,10 @@ namespace casioemu
 			reg_pc = impl_long_imm;
 		}
 		else
+		{
 			reg_pc = impl_operands[1].value;
+			check_dynamic_jump(reg_csr, reg_pc);
+		}
 	}
 
 	void CPU::OP_BL()

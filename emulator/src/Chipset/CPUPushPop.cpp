@@ -48,6 +48,8 @@ namespace casioemu
 		reg_sp += pop_size;
 	}
 
+	void check_dynamic_jump(uint16_t csr, uint16_t pc);
+
 	void CPU::OP_POPL()
 	{
 		if (impl_operands[0].value & 1)
@@ -62,9 +64,18 @@ namespace casioemu
 			reg_psw = Pop16();
 		if (impl_operands[0].value & 2)
 		{
+			uint16_t constexpr far_call_stub_csr = 0,
+					 far_call_stub_pc = 0x96e8 + 2;
+
+			bool is_dynamic_call = reg_csr == far_call_stub_csr &&
+				reg_pc == far_call_stub_pc;
+
 			reg_pc = Pop16();
 			if (memory_model == MM_LARGE)
 				reg_csr = Pop16() & 0x000F;
+
+			if (is_dynamic_call)
+				check_dynamic_jump(reg_csr, reg_pc);
 		}
 	}
 
