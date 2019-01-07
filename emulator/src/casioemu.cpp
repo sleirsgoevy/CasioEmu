@@ -98,7 +98,13 @@ int main(int argc, char *argv[])
 
 				if (console_input_c_str == NULL)
 				{
-					logger::Info("Console thread shutting down\n");
+					std::cout << '\n';
+
+					SDL_Event event;
+					SDL_zero(event);
+					event.type = SDL_WINDOWEVENT;
+					event.window.event = SDL_WINDOWEVENT_CLOSE;
+					SDL_PushEvent(&event);
 					break;
 				}
 
