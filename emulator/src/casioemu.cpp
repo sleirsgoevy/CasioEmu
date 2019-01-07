@@ -67,7 +67,13 @@ int main(int argc, char *argv[])
 				std::getline(std::cin, console_input_str);
 				if (std::cin.fail())
 				{
-					logger::Info("Console thread shutting down\n");
+					std::cout << '\n';
+
+					SDL_Event event;
+					SDL_zero(event);
+					event.type = SDL_WINDOWEVENT;
+					event.window.event = SDL_WINDOWEVENT_CLOSE;
+					SDL_PushEvent(&event);
 					break;
 				}
 
