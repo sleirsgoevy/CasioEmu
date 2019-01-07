@@ -63,8 +63,7 @@ namespace casioemu
 		SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
 		window = SDL_CreateWindow(
 			std::string(GetModelInfo("model_name")).c_str(),
-			SDL_WINDOWPOS_UNDEFINED,
-			SDL_WINDOWPOS_UNDEFINED,
+			0, 0,
 			width, height,
 			SDL_WINDOW_SHOWN |
 			(argv_map.count("resizable") ? SDL_WINDOW_RESIZABLE : 0)
