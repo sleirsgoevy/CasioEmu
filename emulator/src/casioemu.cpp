@@ -13,6 +13,12 @@
 #include "Logger.hpp"
 #include "Data/EventCode.hpp"
 
+#include <cstdio>
+#include <cstdlib>
+
+#include <readline/readline.h>
+#include <readline/history.h>
+
 using namespace casioemu;
 
 std::mutex input_mx;
@@ -63,9 +69,8 @@ int main(int argc, char *argv[])
 		std::thread console_input_thread([&] {
 			while (1)
 			{
-				std::cout << "> ";
-				std::getline(std::cin, console_input_str);
-				if (std::cin.fail())
+				char *console_input_c_str = readline("> ");
+				if (console_input_c_str == NULL)
 				{
 					std::cout << '\n';
 
@@ -76,6 +81,14 @@ int main(int argc, char *argv[])
 					SDL_PushEvent(&event);
 					break;
 				}
+
+				// Ignore empty lines.
+				if (console_input_c_str[0] == 0)
+					continue;
+
+				add_history(console_input_c_str);
+				console_input_str = console_input_c_str;
+				free(console_input_c_str);
 
 				input_processed = false;
 				SDL_Event event;
@@ -150,6 +163,10 @@ int main(int argc, char *argv[])
 
 	IMG_Quit();
 	SDL_Quit();
+
+	rl_free_line_state();
+	rl_deprep_terminal();
+	std::cout << '\n';
 
 	return 0;
 }
