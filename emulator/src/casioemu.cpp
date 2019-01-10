@@ -15,6 +15,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -59,6 +60,18 @@ int main(int argc, char *argv[])
 	int imgFlags = IMG_INIT_PNG;
 	if (IMG_Init(imgFlags) != imgFlags)
 		PANIC("IMG_Init failed: %s\n", IMG_GetError());
+
+	std::string history_filename;
+	auto history_filename_iter = argv_map.find("history");
+	if (history_filename_iter != argv_map.end())
+		history_filename = history_filename_iter->second;
+
+	if (!history_filename.empty())
+	{
+		int err = read_history(history_filename.c_str());
+		if (err && err != ENOENT)
+			PANIC("error while reading history file: %s\n", std::strerror(err));
+	}
 
 	{
 		Emulator emulator(argv_map, 20, 128 * 1024);
@@ -167,6 +180,13 @@ int main(int argc, char *argv[])
 	rl_free_line_state();
 	rl_deprep_terminal();
 	std::cout << '\n';
+
+	if (!history_filename.empty())
+	{
+		int err = write_history(history_filename.c_str());
+		if (err)
+			PANIC("error while writing history file: %s\n", std::strerror(err));
+	}
 
 	return 0;
 }
