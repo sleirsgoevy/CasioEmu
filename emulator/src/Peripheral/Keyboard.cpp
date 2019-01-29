@@ -49,6 +49,12 @@ namespace casioemu
 				keyboard->RecalculateKI();
 		}, emulator);
 
+		keyboard_pd_emu = emulator.GetModelInfo("pd_value");
+		region_ready_emu.Setup(0x8E00, 1, "Keyboard/ReadyStatusEmulator", &keyboard_ready_emu, MMURegion::DefaultRead<uint8_t>, MMURegion::DefaultWrite<uint8_t>, emulator);
+		region_ki_emu.Setup(0x8E01, 1, "Keyboard/KIEmulator", &keyboard_in_emu, MMURegion::DefaultRead<uint8_t>, MMURegion::IgnoreWrite, emulator);
+		region_ko_emu.Setup(0x8E02, 1, "Keyboard/KOEmulator", &keyboard_out_emu, MMURegion::DefaultRead<uint8_t>, MMURegion::IgnoreWrite, emulator);
+		region_pd_emu.Setup(0xF050, 1, "Keyboard/PdValue", &keyboard_pd_emu, MMURegion::DefaultRead<uint8_t>, MMURegion::IgnoreWrite, emulator);
+
 		{
 			for (auto &button : buttons)
 				button.type = Button::BT_NONE;
@@ -142,6 +148,9 @@ namespace casioemu
 		keyboard_out = 0;
 		keyboard_out_mask = 0;
 
+		keyboard_in_emu = 0;
+		keyboard_out_emu = 0;
+
 		RecalculateGhost();
 	}
 
@@ -223,6 +232,26 @@ namespace casioemu
 			emulator.chipset.Reset();
 		if (button.type == Button::BT_BUTTON && button.pressed != old_pressed)
 			RecalculateGhost();
+
+		// Calculate keyboard_in_emu and keyboard_out_emu
+		if (button.pressed)
+		{
+			keyboard_in_emu = button.ki_bit;
+			keyboard_out_emu = button.ko_bit;
+			has_input = true;
+			return;
+		}
+
+		keyboard_in_emu = keyboard_out_emu = 0;
+		has_input = false;
+		for (auto &button : buttons)
+			if (button.type == Button::BT_BUTTON && button.pressed)
+			{
+				keyboard_in_emu = button.ki_bit;
+				keyboard_out_emu = button.ko_bit;
+				has_input = true;
+				break;
+			}
 	}
 
 	void Keyboard::PressAt(int x, int y, bool stick)
@@ -244,11 +273,6 @@ namespace casioemu
 			uint8_t connections;
 			bool seen;
 		} columns[8];
-
-		has_input = 0;
-		for (auto &button : buttons)
-			if (button.type == Button::BT_BUTTON && button.pressed && button.ki_bit & input_filter)
-				has_input |= button.ki_bit;
 
 		for (size_t cx = 0; cx != 8; ++cx)
 		{
@@ -344,6 +368,9 @@ namespace casioemu
 			require_frame = true;
 			RecalculateGhost();
 		}
+
+		keyboard_in_emu = keyboard_out_emu = 0;
+		has_input = false;
 	}
 }
 
