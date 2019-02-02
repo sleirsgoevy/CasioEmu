@@ -6,8 +6,8 @@
 namespace casioemu
 {
 	class Emulator;
-	class SpriteInfo;
-	class ColourInfo;
+	struct SpriteInfo;
+	struct ColourInfo;
 
 	struct ModelInfo
 	{

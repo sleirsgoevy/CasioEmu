@@ -7,3 +7,6 @@ models/*/*.asm
 models/*/*.names
 ignore/
 test/
+*.dump
+*.found
+*.hex

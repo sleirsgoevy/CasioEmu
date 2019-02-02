@@ -170,6 +170,14 @@ namespace casioemu
 
 	uint8_t MMU::ReadData(size_t offset)
 	{
+		uint8_t result = 0;
+		if(0)
+		{
+		return_lbl:
+			fprintf(stderr, "[ram] read byte %d at %d\n", (int)result, (int)offset);
+			return result;
+		}
+
 		if (offset >= (1 << 24))
 			PANIC("offset doesn't fit 24 bits\n");
 
@@ -179,9 +187,9 @@ namespace casioemu
 		MemoryByte *segment = segment_dispatch[segment_index];
 		if (!segment)
 		{
-			logger::Info("read from offset %04zX of unmapped segment %02zX\n", segment_offset, segment_index);
+			logger::Info("[ram] read from offset %04zX of unmapped segment %02zX\n", segment_offset, segment_index);
 			emulator.HandleMemoryError();
-			return 0;
+			goto return_lbl;
 		}
 
 		MemoryByte &byte = segment[segment_offset];
@@ -198,16 +206,18 @@ namespace casioemu
 		}
 		if (!region)
 		{
-			logger::Info("read from unmapped offset %04zX of segment %02zX\n", segment_offset, segment_index);
+			logger::Info("[ram] read from unmapped offset %04zX of segment %02zX\n", segment_offset, segment_index);
 			emulator.HandleMemoryError();
-			return 0;
+			goto return_lbl;
 		}
 
-		return region->read(region, offset);
+		result = region->read(region, offset);
+		goto return_lbl;
 	}
 
 	void MMU::WriteData(size_t offset, uint8_t data)
 	{
+		fprintf(stderr, "[ram] write byte %d to %d\n", (int)data, (int)offset);
 		if (offset >= (1 << 24))
 			PANIC("offset doesn't fit 24 bits\n");
 
@@ -217,7 +227,7 @@ namespace casioemu
 		MemoryByte *segment = segment_dispatch[segment_index];
 		if (!segment)
 		{
-			logger::Info("write to offset %04zX of unmapped segment %02zX (%02zX)\n", segment_offset, segment_index, data);
+			logger::Info("[ram] write to offset %04zX of unmapped segment %02zX (%02zX)\n", segment_offset, segment_index, data);
 			emulator.HandleMemoryError();
 			return;
 		}
@@ -236,7 +246,7 @@ namespace casioemu
 		}
 		if (!region)
 		{
-			logger::Info("write to unmapped offset %04zX of segment %02zX (%02zX)\n", segment_offset, segment_index, data);
+			logger::Info("[ram] write to unmapped offset %04zX of segment %02zX (%02zX)\n", segment_offset, segment_index, data);
 			emulator.HandleMemoryError();
 			return;
 		}

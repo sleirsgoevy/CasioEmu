@@ -359,14 +359,19 @@ namespace casioemu
 	{
 		if (reg_csr.raw & ~impl_csr_mask)
 		{
-			logger::Info("warning: CSR masked bits set\n");
+			fprintf(stderr, "[cpu] warning: CSR masked bits set\n");
 			reg_csr.raw &= impl_csr_mask;
 		}
 		if (reg_pc.raw & 1)
 		{
-			logger::Info("warning: PC LSB set\n");
+			fprintf(stderr, "[cpu] warning: PC LSB set\n");
 			reg_pc.raw &= ~1;
 		}
+		fprintf(stderr, "[trace] pc=%08x\n", (int)((reg_csr.raw << 16) | reg_pc.raw));
+		fprintf(stderr, "[trace] regs =");
+                for(int i = 0; i < 16; i++)
+                    fprintf(stderr, " %02x", ((unsigned int)reg_r[i]) & 255);
+                fprintf(stderr, "\n");
 		uint16_t opcode = emulator.chipset.mmu.ReadCode((reg_csr.raw << 16) | reg_pc.raw);
 		reg_pc.raw = (uint16_t)(reg_pc.raw + 2);
 		return opcode;
@@ -393,7 +398,10 @@ namespace casioemu
 			OpcodeSource *handler = opcode_dispatch[impl_opcode];
 
 			if (!handler)
-				PANIC("unrecognized instruction %04X at %06zX\n", impl_opcode, (((size_t)reg_csr.raw) << 16) | (reg_pc.raw - 2));
+			{
+				fprintf(stderr, "[cpu] unrecognized instruction %04X at %06zX\n", impl_opcode, (((size_t)reg_csr.raw) << 16) | (reg_pc.raw - 2));
+				continue;
+			}
 
 			impl_long_imm = 0;
 			if (handler->hint & H_TI)
@@ -443,6 +451,7 @@ namespace casioemu
 
 	void CPU::Reset()
 	{
+		fprintf(stderr, "[cpu] cpu reset\n");
 		reg_sp = emulator.chipset.mmu.ReadCode(0);
 		reg_dsr = 0;
 		reg_psw = 0;

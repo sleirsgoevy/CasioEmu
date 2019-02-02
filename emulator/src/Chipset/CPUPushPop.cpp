@@ -4,14 +4,17 @@
 #include "Chipset.hpp"
 #include "MMU.hpp"
 
+#include <stdio.h>
+
 namespace casioemu
 {
 	// * PUSH/POP Instructions
 	void CPU::OP_PUSH()
 	{
 		size_t push_size = impl_operands[1].register_size;
-		if (push_size == 1)
+       		if (push_size == 1)
 			push_size = 2;
+		fprintf(stderr, "[rop] push %d to %04x at %04x\n", (int)push_size, (int)(uint16_t)reg_sp, (int)(uint16_t)reg_pc);
 		reg_sp -= push_size;
 		for (size_t ix = impl_operands[1].register_size - 1; ix != (size_t)-1; --ix)
 			emulator.chipset.mmu.WriteData(reg_sp + ix, impl_operands[1].value >> (8 * ix));
@@ -54,6 +57,7 @@ namespace casioemu
 		size_t pop_size = impl_operands[0].register_size;
 		if (pop_size == 1)
 			pop_size = 2;
+                fprintf(stderr, "[rop] pop %d from %04x at %04x\n", (int)pop_size, (int)(uint16_t)reg_sp, (int)(uint16_t)reg_pc);
 		impl_operands[0].value = 0;
 		for (size_t ix = 0; ix != impl_operands[0].register_size; ++ix)
 			impl_operands[0].value |= ((uint64_t)emulator.chipset.mmu.ReadData(reg_sp + ix)) << (8 * ix);
@@ -89,6 +93,7 @@ namespace casioemu
 				stack.pop_back();
 
 			reg_pc = Pop16();
+                        fprintf(stderr, "[rop] pop pc %04x at sp=%04x\n", (int)reg_pc, (int)(reg_sp - 2));
 			if (memory_model == MM_LARGE)
 				reg_csr = Pop16() & 0x000F;
 		}
