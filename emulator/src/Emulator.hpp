@@ -91,7 +91,7 @@ namespace casioemu
 		ModelInfo GetModelInfo(std::string key);
 		std::string GetModelFilePath(std::string relative_path);
 
-		friend class ModelInfo;
+		friend struct ModelInfo;
 		friend class CPU;
 		friend class MMU;
 	};
