@@ -58,31 +58,9 @@ Supported values of `key` are: (if `value` is not mentioned then it does not mat
 
 ### Available Lua functions
 
-Those Lua functions and variables can be used at the Lua prompt of the emulator.
-Some functions require `script=emulator/lua-common.lua` flag to be passed.
-
-* `printf()`: Print with format.
-* `ins()`: Log all register values to the screen.
-* `break_at`: Set breakpoint. If called with no arguments, break at current address.
-* `unbreak_at`: Delete breakpoint. If input not specified, delete breakpoint at current address. Have no effect if there are no breakpoints at specified position.
-* `cont()`: Continue program execution.
-
-* `emu:set_paused`: Set emulator state. Call with a boolean value.
-* `emu:tick()`: Execute one command.
-* `emu:shutdown()`: Shutdown the emulator.
-
-* `cpu.xxx`: Get register value. `xxx` should be one of
-	* `r0` to `r15`
-	* One of the register names specified in `CPU.cpp:200..216`
-	* `erN`, `xrN`, `qrN` are **not** supported.
-* `cpu.bt`: A string containing the current stack trace.
-
-* `code[address]`: Access code. (By words, only use even address, otherwise program will panic)
-* `data[address]`: Access data. (By bytes)
-* `data:watch(offset, fn)`: Set watchpoint at address `offset` - `fn` is called whenever
-data is written to. If `fn` is `nil`, clear the watchpoint.
-* `data:rwatch(offset, fn)`: Set watchpoint at address `offset` - `fn` is called whenever
-data is read from as data. If `fn` is `nil`, clear the watchpoint.
+Enter `help()` on the emulator prompt for details.
+These Lua functions and variables can be used at the Lua prompt of the emulator.
+Most functions require loading the script `emulator/lua-common.lua`.
 
 ### Build
 
