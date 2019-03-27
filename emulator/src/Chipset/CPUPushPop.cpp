@@ -96,6 +96,7 @@ namespace casioemu
                         fprintf(stderr, "[rop] pop pc %04x at sp=%04x\n", (int)reg_pc, (int)(reg_sp - 2));
 			if (memory_model == MM_LARGE)
 				reg_csr = Pop16() & 0x000F;
+	                fprintf(stderr, "[trace] return to %04x%04x\n", (unsigned int)reg_csr, (unsigned int)reg_pc);
 		}
 	}
 

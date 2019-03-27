@@ -8,13 +8,8 @@ INCLUDEDIRS :=
 
 CXX ?= g++
 CCEXT ?= cpp
-<<<<<<< HEAD
-CCFLAGS ?= -g -std=c++11 -Wall -Wextra -Werror -pedantic `pkg-config --cflags SDL2_image` `pkg-config --cflags sdl2` `pkg-config --cflags lua53`
 CCLINK ?= -lpthread -lreadline `pkg-config --libs SDL2_image` `pkg-config --libs sdl2` `pkg-config --libs lua53`
-=======
 CCFLAGS ?= $(CFLAGS) -g -std=c++11 -Wall -Wextra -Werror -pedantic `pkg-config --cflags SDL2_image` `pkg-config --cflags sdl2` `pkg-config --cflags lua53`
-CCLINK ?= -lpthread `pkg-config --libs SDL2_image` `pkg-config --libs sdl2` `pkg-config --libs lua53`
->>>>>>> 16f8639
 
 FILES := $(shell find $(SRCDIR) -name *.$(CCEXT))
 

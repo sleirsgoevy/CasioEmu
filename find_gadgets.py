@@ -1,6 +1,6 @@
 data = {}
 
-with open('../builtins') as file:
+with open('../570esp/gadgets') as file:
     contents = ('\n'+file.read()+'\n').split('\n/*\n')
     contents = contents[0] + ''.join(i.split('\n*/\n', 1)[1] for i in contents[1:])
     for line in contents.split('\n'):
@@ -8,6 +8,20 @@ with open('../builtins') as file:
         if not line: continue
         l, g = line.split('\t', 1)
         data[int(l, 16) & -2] = g
+
+with open('../570esp/labels') as file:
+    contents = ('\n'+file.read()+'\n').split('\n/*\n')
+    contents = contents[0] + ''.join(i.split('\n*/\n', 1)[1] for i in contents[1:])
+    for line in contents.split('\n'):
+        line = line.split('#', 1)[0].strip()
+        if not line: continue
+        try: l, g = line.split('\t\t', 1)
+        except ValueError:
+            l = line.strip()
+            g = 'f_' + l
+        try: l = (int(l, 16) & -2) + 1
+        except ValueError: continue
+        data[l] = g
 
 while True:
     try: l = input()

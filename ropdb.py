@@ -12,6 +12,8 @@ class ReprInt(int):
         if isinstance(other, ReprInt):
             return self.r == other.r
         return int.__eq__(self, other)
+    def __hash__(self):
+        return hash(int(self))
 
 class MemoryAccessor:
     def __init__(self, mem, sz):
@@ -58,8 +60,23 @@ disabled_breaks = set()
 
 import sys
 
+if len(sys.argv) > 2 and sys.argv[1] == '--disas':
+    with open(sys.argv[2]) as file:
+        disas = file.read().split('\n')
+    del sys.argv[1:3]
+else:
+    disas = []
+
+disas_by_pc = {}
+for l in disas:
+    if '; ' in l:
+        a, b = l.split('; ', 1)
+        b = b.split()[0]
+        try: disas_by_pc[int(b, 16)] = a.strip()
+        except ValueError: pass
+
 if len(sys.argv) not in (3, 4):
-    print('Usage: ropdb <compiled program> <emulator dump> [source_file]')
+    print('Usage: ropdb [--disas <disasm_file>] <compiled program> <emulator dump> [source_file]')
     exit(1)
 
 if len(sys.argv) == 4:
@@ -108,6 +125,7 @@ def format_code(s):
     return ''.join(s).replace('{char}', 'mem8**').replace('{short}', 'mem16**').replace('{int}', 'mem32**').replace('{int64}', 'mem64**')
 
 def format_ptr(ptr):
+    ptr &= 65535
     ans = '0x%04x' % ptr
     for k, v in labels.items():
         if v == ptr:
@@ -171,8 +189,8 @@ while True:
             k = int(l.split()[5])
             mem_writes.append((k, mem.get(k, None)))
             mem[k] = v
-    elif l.startswith('[rop] pop pc '):
-        sp_pos = int(l.split()[5][3:], 16)
+    elif l.startswith('[rop] pop pc ') or (l.startswith('[trace] pc=') and mode[-1:] == 'i'):
+        sp_pos = int(l.split()[5][3:], 16) if l.startswith('[rop] pop pc') else regs_accessor.sp
         have_break = False
         for k, v in breaks.items():
             if v == sp_pos and k not in disabled_breaks:
@@ -190,11 +208,11 @@ while True:
                 else:
                     legend += ' [%s]'%k
                 have_label = True
-        if '#gadgets:' in l:
+        if l.startswith('[rop] pop pc ') and '#gadgets:' in l:
             gadget = l.split('#gadgets:', 1)[1].strip()
         else:
             gadget = None
-        if not have_break and ((lineno == None and gadget == None) or mode == 'cont'): continue
+        if not have_break and ((lineno == None and gadget == None and mode[-1:] != 'i') or mode == 'cont'): continue
         if not have_label:
             legend += ' [??]'
             if max_label - min_label <= 100:
@@ -202,7 +220,7 @@ while True:
                     if (v - sp_pos) % 100 == 0:
                         legend += ' [probably '+k+']'
         i = dump_idx
-        pc = int(l.split()[3], 16)
+        pc = int(l.split()[3], 16) if l.startswith('[rop] pop pc ') else 0
         have_msb = False
         while i < len(dump) and not dump[i].startswith('[trace] pc='):
             i += 1
@@ -213,7 +231,10 @@ while True:
         regs_accessor.pc = pc
         regs_accessor.sp = ReprInt(sp_pos, legend[3:])
         legend += ' pc=%r'%pc
-        if gadget == None: legend += ' (no known gadget)'
+        if l.startswith('[trace] pc='):
+            legend += ' (singlestep)'
+        elif gadget == None:
+            legend += ' (no known gadget)'
         print(legend)
         if lineno != None and source != None and lineno - 1 in range(len(source)):
             gadget2 = source[lineno - 1]
@@ -229,7 +250,11 @@ while True:
                 if format_gadget(gadget3) != format_gadget(gadget2):
                     print('Warning: actual gadget is different:', gadget.strip())
             gadget = gadget2
-        if gadget: print('    '+gadget)
+        if gadget:
+            if l.startswith('[trace] pc='): print('    in gadget: '+gadget)
+            else: print('    '+gadget)
+        if l.startswith('[trace] pc='):
+            if pc in disas_by_pc: print('    disas: '+disas_by_pc[pc])
         import readline
         while True:
             try: cmd = input('(ropdb) ')
@@ -279,7 +304,7 @@ while True:
                     print('usage: disable <break_no>')
                     continue
                 disabled_breaks.add(int(cmd_spl[1]))
-            elif cmd_spl[0] in ('step', 'next', 'cont', 'reverse-step', 'reverse-next', 'reverse-cont'):
+            elif cmd_spl[0] in ('step', 'next', 'cont', 'reverse-step', 'reverse-next', 'reverse-cont', 'stepi', 'nexti', 'reverse-stepi', 'reverse-nexti'):
                 if len(cmd_spl) != 1:
                     print('usage: '+cmd_spl[0])
                     continue
@@ -287,7 +312,7 @@ while True:
                 if cmd_spl[0].startswith('reverse-'):
                     reverse = True
                     cmd_spl[0] = cmd_spl[0][8:]
-                if cmd_spl[0] == 'next': cmd_spl[0] = 'step'
+                if cmd_spl[0][:4] == 'next': cmd_spl[0] = 'step' + cmd_spl[0][4:]
                 mode = cmd_spl[0]
                 break
             elif cmd_spl[0] == 'l':
@@ -313,6 +338,9 @@ while True:
                 data = '\n'.join(dump[max(0, dump_idx-4):dump_idx]+['--> '+dump[dump_idx]]+dump[dump_idx+1:])
                 print(repr(data[:500]))
                 pydoc.pager(data)
+            elif cmd.startswith('!'):
+                import os
+                os.system(cmd[1:])
             else:
                 if cmd_spl[0] != 'p': py_code = cmd
                 try:

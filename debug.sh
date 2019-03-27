@@ -1,2 +1,14 @@
-emulator/bin/casioemu models/fx570esplus 2>dump.log #run the program
-python3 ropdb.py <(python3 asm_annotate.py < test.asm | python3 ../compiler.py llh) <(python3 find_gadgets.py < dump.log) test.asm
+DUMP_LOG="$1"
+ASM_FILE="$2"
+NOTRUN="$3"
+
+PYTHON=python3
+
+if which pypy3
+then PYTHON=pypy3
+fi
+
+if [ "x$NOTRUN" == x ]
+then emulator/bin/casioemu models/fx570esplus 2>"$1" #run the program
+fi
+$PYTHON ropdb.py <($PYTHON asm_annotate.py < "$2" | python3 ../compiler.py -t loader2 -f hex) <($PYTHON find_gadgets.py < "$1") "$2"

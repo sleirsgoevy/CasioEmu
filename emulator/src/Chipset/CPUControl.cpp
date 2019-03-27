@@ -184,6 +184,7 @@ namespace casioemu
 					((size_t)reg_csr.raw) << 16 | reg_pc.raw);
 		OP_B();
 		stack.push_back({false, 0, reg_csr, reg_pc});
+		fprintf(stderr, "[trace] call %04x%04x from %04x%04x\n", (unsigned int)reg_csr, (unsigned int)reg_pc, (unsigned int)reg_lcsr, (unsigned int)reg_lr);
 	}
 
 	// * Miscellaneous Instructions
@@ -201,6 +202,7 @@ namespace casioemu
 		}
 		reg_csr = reg_lcsr;
 		reg_pc = reg_lr;
+                fprintf(stderr, "[trace] return to %04x%04x\n", (unsigned int)reg_csr, (unsigned int)reg_pc);
 	}
 
 	void CPU::OP_RTI()
