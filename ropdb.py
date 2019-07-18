@@ -22,7 +22,7 @@ class MemoryAccessor:
     def __getitem__(self, addr):
         val = ''
         for i in range(addr, addr + self.sz):
-            if i in self.mem: val = '%02x' % self.mem[i] + val
+            if i in self.mem: val = '%02x' % self.mem[i & 65535] + val
             else: val = '??' + val
         num = int.from_bytes(bytes.fromhex(val.replace('?', '0')), 'big', signed=True)
         while len(val) > 1 and val[0] == '0': val = val[1:]
@@ -119,9 +119,9 @@ def format_code(s):
     s = s.split('$')
     for i, si in enumerate(s[1:]):
         if si[:1].isnumeric():
-            s[i + 1] = 'history**'+s[i - 1]
+            s[i + 1] = 'history**'+s[i + 1]
         else:
-            s[i + 1] = 'regs_accessor.'+s[i - 1]
+            s[i + 1] = 'regs_accessor.'+s[i + 1]
     return ''.join(s).replace('{char}', 'mem8**').replace('{short}', 'mem16**').replace('{int}', 'mem32**').replace('{int64}', 'mem64**')
 
 def format_ptr(ptr):
@@ -191,9 +191,18 @@ while True:
             mem[k] = v
     elif l.startswith('[rop] pop pc ') or (l.startswith('[trace] pc=') and mode[-1:] == 'i'):
         sp_pos = int(l.split()[5][3:], 16) if l.startswith('[rop] pop pc') else regs_accessor.sp
+        i = dump_idx
+        pc = int(l.split()[3], 16) if l.startswith('[rop] pop pc ') else 0
+        have_msb = False
+        while i < len(dump) and not dump[i].startswith('[trace] pc='):
+            i += 1
+        if i < len(dump):
+            pc = int(dump[i][11:], 16)
+            have_msb = True
+        pc = ReprInt(pc, ('0x%05x' if have_msb else '0x?%04x')%pc)
         have_break = False
         for k, v in breaks.items():
-            if v == sp_pos and k not in disabled_breaks:
+            if (v == sp_pos or v == -pc) and k not in disabled_breaks:
                 print('Breakpoint', k)
                 have_break = True
         legend = 'at 0x%04x'%sp_pos
@@ -212,22 +221,13 @@ while True:
             gadget = l.split('#gadgets:', 1)[1].strip()
         else:
             gadget = None
-        if not have_break and ((lineno == None and gadget == None and mode[-1:] != 'i') or mode == 'cont'): continue
+        if not have_break and ((lineno == None and gadget == None and mode[-1:] != 'i') or mode[:4] == 'cont'): continue
         if not have_label:
             legend += ' [??]'
             if max_label - min_label <= 100:
                 for k, v in labels.items():
                     if (v - sp_pos) % 100 == 0:
                         legend += ' [probably '+k+']'
-        i = dump_idx
-        pc = int(l.split()[3], 16) if l.startswith('[rop] pop pc ') else 0
-        have_msb = False
-        while i < len(dump) and not dump[i].startswith('[trace] pc='):
-            i += 1
-        if i < len(dump):
-            pc = int(dump[i][11:], 16)
-            have_msb = True
-        pc = ReprInt(pc, ('0x%05x' if have_msb else '0x?%04x')%pc)
         regs_accessor.pc = pc
         regs_accessor.sp = ReprInt(sp_pos, legend[3:])
         legend += ' pc=%r'%pc
@@ -285,6 +285,15 @@ while True:
                         sp = sp_pos
                 breaks[break_no] = sp
                 print('Breakpoint %d at 0x%04x'%(break_no, breaks[break_no]))
+            elif cmd_spl[0] == 'breaki':
+                break_no = len(breaks) + len(watches) + 1
+                try: pc = eval(format_code(py_code), globals(), locals) & ((1 << 17) - 1)
+                except:
+                    import traceback
+                    traceback.print_exc()
+                    continue
+                breaks[break_no] = -pc
+                print('Breakpoint %d at pc=0x%05x'%(break_no, pc))
             elif cmd_spl[0] == 'watch':
                 if not py_code:
                     print('usage: watch <expression>')
@@ -304,7 +313,7 @@ while True:
                     print('usage: disable <break_no>')
                     continue
                 disabled_breaks.add(int(cmd_spl[1]))
-            elif cmd_spl[0] in ('step', 'next', 'cont', 'reverse-step', 'reverse-next', 'reverse-cont', 'stepi', 'nexti', 'reverse-stepi', 'reverse-nexti'):
+            elif cmd_spl[0] in ('step', 'next', 'cont', 'reverse-step', 'reverse-next', 'reverse-cont', 'stepi', 'nexti', 'conti', 'reverse-stepi', 'reverse-nexti'):
                 if len(cmd_spl) != 1:
                     print('usage: '+cmd_spl[0])
                     continue
